@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#4f46e5">
+<meta name="description" content="Sua biblioteca pessoal de conhecimento.">
+<link rel="manifest" href="manifest.json">
+<title>Biblioteca do Cérebro</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#667085;--accent:#4f46e5;--line:#e4e7ec}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+header{background:linear-gradient(135deg,#312e81,#4f46e5);color:white;padding:28px 18px 24px;border-radius:0 0 24px 24px}
+.wrap{max-width:900px;margin:auto;padding:0 16px}.brand{font-size:25px;font-weight:800}.tagline{opacity:.85;margin-top:5px}
+.search{margin-top:20px;background:white;border-radius:14px;padding:13px 15px;color:#333;display:flex;gap:9px;align-items:center}
+.search input{border:0;outline:0;width:100%;font-size:16px}
+main{padding:20px 0 90px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:17px;box-shadow:0 2px 8px #1018280d}
+.card h3{margin:0 0 7px;font-size:17px}.muted{color:var(--muted);font-size:13px}
+button{border:0;border-radius:12px;padding:11px 14px;font-weight:700;cursor:pointer}
+.primary{background:var(--accent);color:white}.secondary{background:#eef2ff;color:#3730a3}.danger{background:#fff1f2;color:#be123c}
+.section{display:flex;justify-content:space-between;align-items:center;margin:22px 0 12px}.section h2{font-size:18px;margin:0}
+.item{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.item + .item{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+.actions{display:flex;gap:7px;flex-wrap:wrap}.tag{display:inline-block;background:#f2f4f7;border-radius:999px;padding:4px 8px;font-size:11px;margin:4px 4px 0 0}
+.empty{text-align:center;padding:30px;color:var(--muted)}
+.fab{position:fixed;right:20px;bottom:20px;border-radius:50%;width:58px;height:58px;font-size:28px;background:var(--accent);color:#fff;box-shadow:0 8px 20px #0002}
+dialog{border:0;border-radius:18px;width:min(92%,600px);padding:0;box-shadow:0 20px 60px #0004}dialog::backdrop{background:#10182899}
+.modal{padding:22px}.modal h2{margin-top:0}.field{margin:13px 0}.field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}.field input,.field textarea,.field select{width:100%;border:1px solid #d0d5dd;border-radius:10px;padding:11px;font:inherit}.field textarea{min-height:150px;resize:vertical}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.result-title{font-size:18px;font-weight:800;margin-bottom:5px}
+@media(max-width:500px){.grid{grid-template-columns:1fr}.item{display:block}.actions{margin-top:10px}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<div class="brand">🧠 Biblioteca do Cérebro</div>
+<div class="tagline">Tudo o que você aprende, em um só lugar.</div>
+<div class="search">🔎 <input id="search" placeholder="O que você quer lembrar?"></div>
+</div></header>
+
+<main class="wrap">
+<div class="section"><h2>Minhas bibliotecas</h2><button class="secondary" onclick="newFolder()">＋ Pasta</button></div>
+<div id="folders" class="grid"></div>
+
+<div class="section"><h2>Conhecimentos recentes</h2></div>
+<div id="notes" class="card"></div>
+</main>
+
+<button class="fab" onclick="newNote()" aria-label="Adicionar conhecimento">＋</button>
+
+<dialog id="noteDialog"><div class="modal">
+<h2 id="noteHeading">Novo conhecimento</h2>
+<div class="field"><label>Título</label><input id="title" placeholder="Ex.: Metacognição"></div>
+<div class="field"><label>Pasta</label><select id="folder"></select></div>
+<div class="field"><label>Conteúdo</label><textarea id="content" placeholder="Escreva o que você aprendeu..."></textarea></div>
+<div class="field"><label>Tags</label><input id="tags" placeholder="ex.: aprendizagem, memória, cognição"></div>
+<div class="field"><label>Fonte</label><input id="source" placeholder="Ex.: Pós-graduação, livro, aula 3, página 42"></div>
+<div class="modal-actions"><button onclick="closeModal()">Cancelar</button><button class="primary" onclick="saveNote()">Salvar conhecimento</button></div>
+</div></dialog>
+
+<script>
+const KEY='biblioteca_cerebro_v1';
+let data=JSON.parse(localStorage.getItem(KEY)||'null')||{
+ folders:[
+  {id:'pos',name:'Pós-graduação',icon:'🎓'},
+  {id:'livros',name:'Livros',icon:'📖'},
+  {id:'ideias',name:'Ideias',icon:'💡'}
+ ],
+ notes:[
+  {id:'demo',title:'Como usar a Biblioteca do Cérebro',folder:'pos',content:'Comece registrando conceitos, explicações, dúvidas, referências e suas próprias conclusões. Depois use a busca para reencontrar tudo rapidamente.',tags:['organização','estudo'],source:'Exemplo'}
+ ]
+};
+function persist(){localStorage.setItem(KEY,JSON.stringify(data))}
+function esc(s=''){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function render(){
+ const q=document.getElementById('search').value.trim().toLowerCase();
+ const folders=document.getElementById('folders');
+ folders.innerHTML=data.folders.map(f=>{
+  const count=data.notes.filter(n=>n.folder===f.id).length;
+  return `<div class="card"><h3>${f.icon} ${esc(f.name)}</h3><div class="muted">${count} conhecimento(s)</div><br><button class="secondary" onclick="showFolder('${f.id}')">Abrir</button></div>`
+ }).join('');
+ let notes=data.notes.slice().reverse();
+ if(q) notes=notes.filter(n=>(n.title+' '+n.content+' '+n.tags.join(' ')+' '+n.source).toLowerCase().includes(q));
+ document.getElementById('notes').innerHTML=notes.length?notes.map(n=>{
+  const f=data.folders.find(x=>x.id===n.folder);
+  return `<div class="item"><div><div class="result-title">${esc(n.title)}</div><div class="muted">${f?f.icon+' '+esc(f.name):''} · ${esc(n.source||'Sem fonte')}</div><p>${esc(n.content).slice(0,260)}${n.content.length>260?'…':''}</p><div>${n.tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div></div><div class="actions"><button class="secondary" onclick="viewNote('${n.id}')">Abrir</button><button class="danger" onclick="deleteNote('${n.id}')">Excluir</button></div></div>`
+ }).join(''):`<div class="empty">${q?'Nenhum conhecimento encontrado.':'Ainda não há conhecimentos cadastrados.'}</div>`;
+}
+function newFolder(){
+ const name=prompt('Nome da nova pasta:');
+ if(!name?.trim())return;
+ data.folders.push({id:Date.now().toString(),name:name.trim(),icon:'📚'});persist();render();
+}
+function newNote(){
+ document.getElementById('noteHeading').textContent='Novo conhecimento';
+ document.getElementById('title').value='';document.getElementById('content').value='';
+ document.getElementById('tags').value='';document.getElementById('source').value='';
+ document.getElementById('folder').innerHTML=data.folders.map(f=>`<option value="${f.id}">${f.icon} ${esc(f.name)}</option>`).join('');
+ document.getElementById('noteDialog').showModal();
+}
+function saveNote(){
+ const title=document.getElementById('title').value.trim(),content=document.getElementById('content').value.trim();
+ if(!title||!content){alert('Preencha pelo menos o título e o conteúdo.');return}
+ data.notes.push({id:Date.now().toString(),title,folder:document.getElementById('folder').value,content,
+ tags:document.getElementById('tags').value.split(',').map(x=>x.trim()).filter(Boolean),source:document.getElementById('source').value.trim()});
+ persist();closeModal();render();
+}
+function closeModal(){document.getElementById('noteDialog').close()}
+function viewNote(id){
+ const n=data.notes.find(x=>x.id===id);if(!n)return;
+ const f=data.folders.find(x=>x.id===n.folder);
+ alert(`${n.title}\\n\\n${n.content}\\n\\nPasta: ${f?.name||''}\\nFonte: ${n.source||'—'}\\nTags: ${n.tags.join(', ')||'—'}`);
+}
+function deleteNote(id){if(confirm('Excluir este conhecimento?')){data.notes=data.notes.filter(n=>n.id!==id);persist();render()}}
+function showFolder(id){
+ const f=data.folders.find(x=>x.id===id);if(!f)return;
+ document.getElementById('search').value='';
+ const items=data.notes.filter(n=>n.folder===id);
+ document.getElementById('notes').innerHTML=`<div class="section"><h2>${f.icon} ${esc(f.name)}</h2></div>`+
+ (items.length?items.slice().reverse().map(n=>`<div class="item"><div><div class="result-title">${esc(n.title)}</div><p>${esc(n.content).slice(0,260)}${n.content.length>260?'…':''}</p></div><button class="secondary" onclick="viewNote('${n.id}')">Abrir</button></div>`).join(''):'<div class="empty">Esta pasta ainda está vazia.</div>');
+}
+document.getElementById('search').addEventListener('input',render);render();
+</script>
+
+</body>
+</html>

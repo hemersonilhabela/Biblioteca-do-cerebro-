@@ -1,0 +1,11 @@
+{
+  "name": "Biblioteca do Cérebro",
+  "short_name": "Biblioteca",
+  "description": "Tudo o que você aprende, em um só lugar.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#4f46e5",
+  "lang": "pt-BR"
+}
